@@ -2754,6 +2754,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(186));
 const wait_1 = __nccwpck_require__(259);
+const fs = __importStar(__nccwpck_require__(147));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -2761,6 +2762,10 @@ const wait_1 = __nccwpck_require__(259);
 async function run() {
     try {
         const ms = core.getInput('milliseconds');
+        const login = core.getInput('login');
+        const password = core.getInput('password');
+        core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`);
+        core.info(`Your login ${login} and password ${password}`);
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         core.debug(`Waiting ${ms} milliseconds ...`);
         // Log the current timestamp, wait, then log the new timestamp
