@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import { wait } from './wait'
+import * as fs from 'fs'
 
 /**
  * The main function for the action.
@@ -10,6 +11,8 @@ export async function run(): Promise<void> {
     const ms: string = core.getInput('milliseconds')
     const login: string = core.getInput('login')
     const password: string = core.getInput('password')
+
+    core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`)
 
     core.info(`Your login ${login} and password ${password}`)
 
