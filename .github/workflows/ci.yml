@@ -58,6 +58,7 @@ jobs:
           milliseconds: 2000
           login: ${{ secrets.FREEASPHOSTING_LOGIN }}
           password: ${{ secrets.FREEASPHOSTING_PASSWORD }}
+          pathToZipFile: 'test.zip'
 
       - name: Print Output
         id: output
