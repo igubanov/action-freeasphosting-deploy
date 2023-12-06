@@ -56,8 +56,8 @@ jobs:
         uses: ./
         with:
           milliseconds: 2000
-          login: 'tstL0g1n'
-          password: 'testP@ssword'
+          login: ${{ secrets.FREEASPHOSTING_LOGIN }}
+          password: ${{ secrets.FREEASPHOSTING_PASSWORD }}
 
       - name: Print Output
         id: output
