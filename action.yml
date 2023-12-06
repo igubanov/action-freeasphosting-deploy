@@ -1,6 +1,7 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'freeasphosting deploy'
+description:
+  'This action deployed your zip file to freeasphosting via a post request'
+author: '@igubanov'
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
@@ -13,6 +14,13 @@ inputs:
     description: 'Your input description here'
     required: true
     default: '1000'
+
+  login:
+    description: 'Login for freeasphosting.net (like on the site)'
+    required: true
+  password:
+    description: 'Password for freeasphosting.net (like on the site)'
+    required: true
 
 # Define your outputs here.
 outputs:

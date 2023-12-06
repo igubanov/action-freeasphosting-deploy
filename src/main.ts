@@ -8,6 +8,10 @@ import { wait } from './wait'
 export async function run(): Promise<void> {
   try {
     const ms: string = core.getInput('milliseconds')
+    const login: string = core.getInput('login')
+    const password: string = core.getInput('password')
+
+    core.info(`Your login ${login} and password ${password}`)
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Waiting ${ms} milliseconds ...`)
