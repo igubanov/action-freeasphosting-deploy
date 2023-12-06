@@ -5,7 +5,7 @@ import * as core from '@actions/core'
 
 const serverUrl = 'freeasphosting.net'
 
-async function deployToFreeasphosting(
+export async function deployToFreeasphosting(
   login: string,
   password: string,
   zipFilePath: string

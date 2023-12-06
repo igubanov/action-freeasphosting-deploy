@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import { wait } from './wait'
 import * as fs from 'fs'
+import { deployToFreeasphosting } from './freeasphosting-deploy'
 
 /**
  * The main function for the action.
@@ -13,7 +14,7 @@ export async function run(): Promise<void> {
     const password: string = core.getInput('password')
     const filePath: string = core.getInput('pathToZipFile')
 
-    deployToFreeasphosting(login, password, filePath)
+    await deployToFreeasphosting(login, password, filePath)
 
     core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`)
 
@@ -33,11 +34,4 @@ export async function run(): Promise<void> {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
   }
-}
-function deployToFreeasphosting(
-  login: string,
-  password: string,
-  filePath: string
-) {
-  throw new Error('Function not implemented.')
 }
