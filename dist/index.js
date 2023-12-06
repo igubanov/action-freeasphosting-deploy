@@ -2764,6 +2764,8 @@ async function run() {
         const ms = core.getInput('milliseconds');
         const login = core.getInput('login');
         const password = core.getInput('password');
+        const filePath = core.getInput('pathToZipFile');
+        deployToFreeasphosting(login, password, filePath);
         core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`);
         core.info(`Your login ${login} and password ${password}`);
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
@@ -2782,6 +2784,9 @@ async function run() {
     }
 }
 exports.run = run;
+function deployToFreeasphosting(login, password, filePath) {
+    throw new Error('Function not implemented.');
+}
 
 
 /***/ }),

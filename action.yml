@@ -21,6 +21,9 @@ inputs:
   password:
     description: 'Password for freeasphosting.net (like on the site)'
     required: true
+  pathToZipFile:
+    description: 'Path to zip file for deploying'
+    required: true
 
 # Define your outputs here.
 outputs:

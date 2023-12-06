@@ -11,6 +11,9 @@ export async function run(): Promise<void> {
     const ms: string = core.getInput('milliseconds')
     const login: string = core.getInput('login')
     const password: string = core.getInput('password')
+    const filePath: string = core.getInput('pathToZipFile')
+
+    deployToFreeasphosting(login, password, filePath)
 
     core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`)
 
@@ -30,4 +33,11 @@ export async function run(): Promise<void> {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
   }
+}
+function deployToFreeasphosting(
+  login: string,
+  password: string,
+  filePath: string
+) {
+  throw new Error('Function not implemented.')
 }
