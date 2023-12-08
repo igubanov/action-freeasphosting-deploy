@@ -10,7 +10,7 @@ export async function deployToFreeasphosting(
   login: string,
   password: string,
   zipFilePath: string
-) {
+): Promise<void> {
   const result = await makeRequest({ path: '' })
 
   if (!result) {
@@ -68,8 +68,8 @@ async function makeRequest(opt: {
           resolve({ response: res, body: Buffer.concat(chunks).toString() })
         })
 
-        res.on('error', error => {
-          reject(error)
+        res.on('error', err => {
+          reject(err)
         })
       }
     )
@@ -83,7 +83,9 @@ async function makeRequest(opt: {
     }
 
     if (opt.headers) {
-      opt.headers.forEach(x => req.setHeader(x.title, x.value))
+      for (var header of opt.headers) {
+        req.setHeader(header.title, header.value)
+      }
     }
 
     if (opt.method === 'POST' && opt.body) {
@@ -195,9 +197,9 @@ async function uploadFile(
 
     debug(`start uploading file request`)
     const result = await makeRequest({
-      path: '/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=' + diskSize,
+      path: `/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=${diskSize}`,
       body: payload,
-      contentType: 'multipart/form-data; boundary=' + boundary,
+      contentType: `multipart/form-data; boundary=${boundary}`,
       cookie,
       method: 'POST',
       headers: [
@@ -237,19 +239,15 @@ function buildBodyForUploadZip(
   boundary: string
 ): Buffer {
   let data = ''
-  for (var fieldName in metadata) {
+  for (let fieldName in metadata) {
     if ({}.hasOwnProperty.call(metadata, fieldName)) {
-      data += '--' + boundary + '\r\n'
-      data +=
-        'Content-Disposition: form-data; name="' +
-        fieldName +
-        '"; \r\n\r\n' +
-        metadata[fieldName as keyof typeof metadata] +
-        '\r\n'
+      data += `--${boundary}\r\n`
+      data += `Content-Disposition: form-data; name="${fieldName}"; \r\n\r\n`
+      data += `${metadata[fieldName as keyof typeof metadata]}\r\n`
     }
   }
 
-  data += '--' + boundary + '\r\n'
+  data += `--${boundary}\r\n`
   data +=
     'Content-Disposition: form-data; name="files[]"; filename="filename.zip"\r\n'
   data += 'Content-Type: application/x-zip-compressed\r\n\r\n'
@@ -258,6 +256,6 @@ function buildBodyForUploadZip(
   return Buffer.concat([
     Buffer.from(data, 'utf-8'),
     Buffer.from(content),
-    Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8')
+    Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')
   ])
 }
