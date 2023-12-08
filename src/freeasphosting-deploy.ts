@@ -83,7 +83,7 @@ async function makeRequest(opt: {
     }
 
     if (opt.headers) {
-      for (let header of opt.headers) {
+      for (const header of opt.headers) {
         req.setHeader(header.title, header.value)
       }
     }
