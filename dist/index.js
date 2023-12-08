@@ -2777,8 +2777,8 @@ async function makeRequest(opt) {
             res.on('end', () => {
                 resolve({ response: res, body: node_buffer_1.Buffer.concat(chunks).toString() });
             });
-            res.on('error', error => {
-                reject(error);
+            res.on('error', err => {
+                reject(err);
             });
         });
         if (opt.cookie) {
@@ -2788,7 +2788,9 @@ async function makeRequest(opt) {
             req.setHeader('Content-Type', opt.contentType);
         }
         if (opt.headers) {
-            opt.headers.forEach(x => req.setHeader(x.title, x.value));
+            for (let header of opt.headers) {
+                req.setHeader(header.title, header.value);
+            }
         }
         if (opt.method === 'POST' && opt.body) {
             req.setHeader('Content-Length', opt.body.length);
@@ -2875,9 +2877,9 @@ async function uploadFile(login, cookie, filePath) {
         const payload = buildBodyForUploadZip(content, metadata, boundary);
         (0, logger_1.debug)(`start uploading file request`);
         const result = await makeRequest({
-            path: '/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=' + diskSize,
+            path: `/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=${diskSize}`,
             body: payload,
-            contentType: 'multipart/form-data; boundary=' + boundary,
+            contentType: `multipart/form-data; boundary=${boundary}`,
             cookie,
             method: 'POST',
             headers: [
@@ -2904,18 +2906,14 @@ async function uploadFile(login, cookie, filePath) {
 }
 function buildBodyForUploadZip(content, metadata, boundary) {
     let data = '';
-    for (var fieldName in metadata) {
+    for (const fieldName in metadata) {
         if ({}.hasOwnProperty.call(metadata, fieldName)) {
-            data += '--' + boundary + '\r\n';
-            data +=
-                'Content-Disposition: form-data; name="' +
-                    fieldName +
-                    '"; \r\n\r\n' +
-                    metadata[fieldName] +
-                    '\r\n';
+            data += `--${boundary}\r\n`;
+            data += `Content-Disposition: form-data; name="${fieldName}"; \r\n\r\n`;
+            data += `${metadata[fieldName]}\r\n`;
         }
     }
-    data += '--' + boundary + '\r\n';
+    data += `--${boundary}\r\n`;
     data +=
         'Content-Disposition: form-data; name="files[]"; filename="filename.zip"\r\n';
     data += 'Content-Type: application/x-zip-compressed\r\n\r\n';
@@ -2923,7 +2921,7 @@ function buildBodyForUploadZip(content, metadata, boundary) {
     return node_buffer_1.Buffer.concat([
         node_buffer_1.Buffer.from(data, 'utf-8'),
         node_buffer_1.Buffer.from(content),
-        node_buffer_1.Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8')
+        node_buffer_1.Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')
     ]);
 }
 

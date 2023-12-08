@@ -83,7 +83,7 @@ async function makeRequest(opt: {
     }
 
     if (opt.headers) {
-      for (var header of opt.headers) {
+      for (let header of opt.headers) {
         req.setHeader(header.title, header.value)
       }
     }
@@ -235,11 +235,11 @@ async function uploadFile(
 
 function buildBodyForUploadZip(
   content: Buffer,
-  metadata: {},
+  metadata: object,
   boundary: string
 ): Buffer {
   let data = ''
-  for (let fieldName in metadata) {
+  for (const fieldName in metadata) {
     if ({}.hasOwnProperty.call(metadata, fieldName)) {
       data += `--${boundary}\r\n`
       data += `Content-Disposition: form-data; name="${fieldName}"; \r\n\r\n`
