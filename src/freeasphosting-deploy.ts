@@ -1,9 +1,10 @@
 import { IncomingMessage, request } from 'http'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'fs'
-import * as core from '@actions/core'
+import { debug, error, info } from './logger'
 
 const serverUrl = 'freeasphosting.net'
+const diskSize = '5000'
 
 export async function deployToFreeasphosting(
   login: string,
@@ -40,16 +41,6 @@ export async function deployToFreeasphosting(
 
   await uploadFile(login, cookie, zipFilePath)
   return
-
-  // list files
-  // console.log(response.response.statusCode);
-  // response = await makeRequest({
-  //   path: "/cp/fileManager.aspx",
-  //   method: "GET",
-  //   cookie,
-  // });
-
-  // console.log(response.body);
 }
 
 async function makeRequest(opt: {
@@ -128,6 +119,61 @@ async function loginToSite(
   return false
 }
 
+async function getMetadata(cookie: string): Promise<object> {
+  info('try get metadata')
+  // request needed to get at the next right parameters
+  await makeRequest({
+    path: '/cp/fileManager.aspx',
+    cookie,
+    method: 'GET'
+  })
+
+  const result = await makeRequest({
+    path: '/cp/browsezip.aspx',
+    cookie,
+    method: 'GET'
+  })
+
+  const homeDir_Path = result.body
+    .match('id="ContentPlaceHolder1_hdnDirHome" value="([^"]+)"')
+    ?.at(1)
+  if (!homeDir_Path) {
+    error(`cant find homeDir_Path`)
+  }
+
+  const DomainName = result.body
+    .match('id="ContentPlaceHolder1_DomainName" value="([^"]+)"')
+    ?.at(1)
+  if (!DomainName) {
+    error(`cant find DomainName`)
+  }
+
+  const Username = result.body
+    .match('id="ContentPlaceHolder1_hdnUsername" value="([^"]+)"')
+    ?.at(1)
+  if (!Username) {
+    error(`cant find Username`)
+  }
+
+  const UID = result.body
+    .match('id="ContentPlaceHolder1_hdnUID" value="([^"]+)"')
+    ?.at(1)
+  if (!UID) {
+    error(`cant find UID`)
+  }
+
+  const metadata = {
+    homeDir_Path,
+    Allocated_Disk: diskSize,
+    DomainName,
+    UID,
+    Username
+  }
+
+  debug(`loded metadata: ${JSON.stringify(metadata)}`)
+  return metadata
+}
+
 async function uploadFile(
   login: string,
   cookie: string,
@@ -141,14 +187,7 @@ async function uploadFile(
       return false
     }
 
-    // TODO: get metadata from response
-    const metadata = {
-      homeDir_Path: `\\\\15.235.122.178\\www2\\${login}\\`,
-      Allocated_Disk: '5000',
-      DomainName: login,
-      UID: '959045',
-      Username: login
-    }
+    const metadata = await getMetadata(cookie)
     const boundary = '----WebKitFormBoundaryWPx2221231321'
 
     debug('start building body for uploading')
@@ -156,7 +195,7 @@ async function uploadFile(
 
     debug(`start uploading file request`)
     const result = await makeRequest({
-      path: '/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=5000',
+      path: '/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=' + diskSize,
       body: payload,
       contentType: 'multipart/form-data; boundary=' + boundary,
       cookie,
@@ -218,23 +257,7 @@ function buildBodyForUploadZip(
 
   return Buffer.concat([
     Buffer.from(data, 'utf-8'),
-    //content, //latin1
-    //Buffer.copyBytesFrom(content),
     Buffer.from(content),
-    //new Buffer(content, "binary"),
     Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8')
   ])
 }
-
-function info(message: string) {
-  core.info(message)
-}
-
-function debug(message: string) {
-  core.debug(message)
-}
-
-function error(message: string) {
-  core.error(message)
-}
-/**/
