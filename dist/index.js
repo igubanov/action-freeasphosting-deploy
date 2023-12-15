@@ -2914,8 +2914,8 @@ function buildBodyForUploadZip(content, metadata, boundary) {
         }
     }
     data += `--${boundary}\r\n`;
-    data +=
-        'Content-Disposition: form-data; name="files[]"; filename="filename.zip"\r\n';
+    const fileName = `filename_${new Date().getTime()}.zip`;
+    data += `Content-Disposition: form-data; name="files[]"; filename="${fileName}"\r\n`;
     data += 'Content-Type: application/x-zip-compressed\r\n\r\n';
     //data += 'Content-Type: application/octet-stream\r\n\r\n'
     return node_buffer_1.Buffer.concat([
