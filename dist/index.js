@@ -2722,6 +2722,259 @@ exports["default"] = _default;
 
 /***/ }),
 
+/***/ 670:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.deployToFreeasphosting = void 0;
+const http_1 = __nccwpck_require__(685);
+const node_buffer_1 = __nccwpck_require__(254);
+const fs_1 = __nccwpck_require__(147);
+const logger_1 = __nccwpck_require__(636);
+const serverUrl = 'freeasphosting.net';
+const diskSize = '5000';
+async function deployToFreeasphosting(login, password, zipFilePath) {
+    const result = await makeRequest({ path: '' });
+    if (!result) {
+        (0, logger_1.error)(`reuqest to ${serverUrl} is failed`);
+        return;
+    }
+    const allCookies = result.response.headers['set-cookie'];
+    if (!allCookies) {
+        (0, logger_1.error)(`Response doesnt contains cookies`);
+        return;
+    }
+    const cookie = allCookies.find(x => x.startsWith('ASP.NET_SessionId'));
+    if (!cookie) {
+        (0, logger_1.error)(`Cookies doenst include ASP.NET_SessionId`);
+        return;
+    }
+    (0, logger_1.debug)(`get cookie: ${cookie}`);
+    if (await loginToSite(login, password, cookie)) {
+        (0, logger_1.debug)(`successfull authorized`);
+    }
+    else {
+        (0, logger_1.error)(`login failed`);
+        return;
+    }
+    await uploadFile(login, cookie, zipFilePath);
+    return;
+}
+exports.deployToFreeasphosting = deployToFreeasphosting;
+async function makeRequest(opt) {
+    return new Promise(function (resolve, reject) {
+        const req = (0, http_1.request)({
+            host: serverUrl,
+            path: opt.path,
+            method: opt.method ?? 'GET'
+        }, res => {
+            const chunks = [];
+            res.on('data', chunk => {
+                chunks.push(chunk);
+            });
+            res.on('end', () => {
+                resolve({ response: res, body: node_buffer_1.Buffer.concat(chunks).toString() });
+            });
+            res.on('error', err => {
+                reject(err);
+            });
+        });
+        if (opt.cookie) {
+            req.setHeader('Cookie', opt.cookie);
+        }
+        if (opt.contentType) {
+            req.setHeader('Content-Type', opt.contentType);
+        }
+        if (opt.headers) {
+            for (const header of opt.headers) {
+                req.setHeader(header.title, header.value);
+            }
+        }
+        if (opt.method === 'POST' && opt.body) {
+            req.setHeader('Content-Length', opt.body.length);
+            req.write(opt.body);
+        }
+        req.end();
+    });
+}
+async function loginToSite(login, password, cookie) {
+    const body = `__EVENTTARGET=&__EVENTARGUMENT=&__VIEWSTATE=%2FwEPDwUKMjExNTgwNTg1MGRk0DiomOI85QuZT8iUkfl%2FGMqIvIKci2OW55DIihCt9Vc%3D&__VIEWSTATEGENERATOR=CA0B0334&__EVENTVALIDATION=%2FwEdAAolTYjub%2FqP8bIdJrJE0oJcVK7BrRAtEiqu9nGFEI%2BjB3Y2%2BMc6SrnAqio3oCKbxYai7c8d%2BSPBnvYjdu1GYhDkQwdmH1m48FGJ7a8D8d%2BhElQkXmq%2FPiIM8AyUUnUa9BqqWMSXKfhrvr8S6ZbPNyfB0V9lfkNohFh6jrQCuWRMANMgwQhAgrN8SxHOPE44gPXO6Z4Gpe2BT9AOke3QILxxQhYFloM4uottxhMECc21VTxrqZdi9WDnxd2w7wp9NW4%3D&txtUsername=${login}&txtPassword=${password}&btnSign=Log+In&txtEmail=&txtUsernameRegFront=&txtUsernameReg=&txtPasswordReg="`;
+    const response = await makeRequest({
+        path: '',
+        method: 'POST',
+        body,
+        cookie,
+        contentType: 'application/x-www-form-urlencoded'
+    });
+    if (response.response.complete && response.response.statusCode === 302) {
+        return true;
+    }
+    (0, logger_1.debug)(`login failed, status code ${response.response.statusCode},` +
+        ` response headers: ${response.response.headers}, body:`);
+    (0, logger_1.debug)(response.body);
+    return false;
+}
+async function getMetadata(cookie) {
+    (0, logger_1.info)('try get metadata');
+    // request needed to get at the next right parameters
+    await makeRequest({
+        path: '/cp/fileManager.aspx',
+        cookie,
+        method: 'GET'
+    });
+    const result = await makeRequest({
+        path: '/cp/browsezip.aspx',
+        cookie,
+        method: 'GET'
+    });
+    const homeDir_Path = result.body
+        .match('id="ContentPlaceHolder1_hdnDirHome" value="([^"]+)"')
+        ?.at(1);
+    if (!homeDir_Path) {
+        (0, logger_1.error)(`cant find homeDir_Path`);
+    }
+    const DomainName = result.body
+        .match('id="ContentPlaceHolder1_DomainName" value="([^"]+)"')
+        ?.at(1);
+    if (!DomainName) {
+        (0, logger_1.error)(`cant find DomainName`);
+    }
+    const Username = result.body
+        .match('id="ContentPlaceHolder1_hdnUsername" value="([^"]+)"')
+        ?.at(1);
+    if (!Username) {
+        (0, logger_1.error)(`cant find Username`);
+    }
+    const UID = result.body
+        .match('id="ContentPlaceHolder1_hdnUID" value="([^"]+)"')
+        ?.at(1);
+    if (!UID) {
+        (0, logger_1.error)(`cant find UID`);
+    }
+    const metadata = {
+        homeDir_Path,
+        Allocated_Disk: diskSize,
+        DomainName,
+        UID,
+        Username
+    };
+    (0, logger_1.debug)(`loded metadata: ${JSON.stringify(metadata)}`);
+    return metadata;
+}
+async function uploadFile(login, cookie, filePath) {
+    (0, logger_1.debug)(`start uploadFile method, reading file`);
+    (0, fs_1.readFile)(filePath, async function (err, content) {
+        if (err) {
+            (0, logger_1.error)(`cant open file ${filePath}`);
+            (0, logger_1.debug)(err.toString());
+            return false;
+        }
+        const metadata = await getMetadata(cookie);
+        const boundary = '----WebKitFormBoundaryWPx2221231321';
+        (0, logger_1.debug)('start building body for uploading');
+        const payload = buildBodyForUploadZip(content, metadata, boundary);
+        (0, logger_1.debug)(`start uploading file request`);
+        const result = await makeRequest({
+            path: `/cp/FileUploadHandler.ashx?upload=start&intTotalDisk=${diskSize}`,
+            body: payload,
+            contentType: `multipart/form-data; boundary=${boundary}`,
+            cookie,
+            method: 'POST',
+            headers: [
+                {
+                    title: 'referer',
+                    value: 'https://freeasphosting.net/cp/browsezip.aspx'
+                }
+            ]
+        });
+        (0, logger_1.debug)(`upload file complete, status code ${result.response.statusCode}, ` +
+            `response body: ${result.body}`);
+        // console.log('@' + result.body.toString() + '@')
+        // console.log(result.response.statusCode)
+        if (result.response.statusCode === 200 &&
+            result.body.includes('Uploaded') &&
+            result.body.includes('True')) {
+            (0, logger_1.info)('file successful upload');
+        }
+        else {
+            (0, logger_1.error)(`files doesnt upload`);
+            (0, logger_1.debug)(`Probably file havent uploaded, response code: ${result.response.statusCode}, message: ${result.body}`);
+        }
+    });
+}
+function buildBodyForUploadZip(content, metadata, boundary) {
+    let data = '';
+    for (const fieldName in metadata) {
+        if ({}.hasOwnProperty.call(metadata, fieldName)) {
+            data += `--${boundary}\r\n`;
+            data += `Content-Disposition: form-data; name="${fieldName}"; \r\n\r\n`;
+            data += `${metadata[fieldName]}\r\n`;
+        }
+    }
+    data += `--${boundary}\r\n`;
+    const fileName = `filename_${new Date().getTime()}.zip`;
+    data += `Content-Disposition: form-data; name="files[]"; filename="${fileName}"\r\n`;
+    data += 'Content-Type: application/x-zip-compressed\r\n\r\n';
+    //data += 'Content-Type: application/octet-stream\r\n\r\n'
+    return node_buffer_1.Buffer.concat([
+        node_buffer_1.Buffer.from(data, 'utf-8'),
+        node_buffer_1.Buffer.from(content),
+        node_buffer_1.Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')
+    ]);
+}
+
+
+/***/ }),
+
+/***/ 636:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.error = exports.debug = exports.info = void 0;
+const core = __importStar(__nccwpck_require__(186));
+function info(message) {
+    core.info(message);
+}
+exports.info = info;
+function debug(message) {
+    core.debug(message);
+}
+exports.debug = debug;
+function error(message) {
+    core.error(message);
+}
+exports.error = error;
+
+
+/***/ }),
+
 /***/ 399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -2754,6 +3007,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(186));
 const wait_1 = __nccwpck_require__(259);
+const fs = __importStar(__nccwpck_require__(147));
+const freeasphosting_deploy_1 = __nccwpck_require__(670);
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -2761,6 +3016,12 @@ const wait_1 = __nccwpck_require__(259);
 async function run() {
     try {
         const ms = core.getInput('milliseconds');
+        const login = core.getInput('login');
+        const password = core.getInput('password');
+        const filePath = core.getInput('pathToZipFile');
+        await (0, freeasphosting_deploy_1.deployToFreeasphosting)(login, password, filePath);
+        core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`);
+        core.info(`Your login ${login} and password ${password}`);
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         core.debug(`Waiting ${ms} milliseconds ...`);
         // Log the current timestamp, wait, then log the new timestamp
@@ -2859,6 +3120,14 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
+
+/***/ }),
+
+/***/ 254:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:buffer");
 
 /***/ }),
 

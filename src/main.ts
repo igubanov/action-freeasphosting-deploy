@@ -1,5 +1,7 @@
 import * as core from '@actions/core'
 import { wait } from './wait'
+import * as fs from 'fs'
+import { deployToFreeasphosting } from './freeasphosting-deploy'
 
 /**
  * The main function for the action.
@@ -8,6 +10,15 @@ import { wait } from './wait'
 export async function run(): Promise<void> {
   try {
     const ms: string = core.getInput('milliseconds')
+    const login: string = core.getInput('login')
+    const password: string = core.getInput('password')
+    const filePath: string = core.getInput('pathToZipFile')
+
+    await deployToFreeasphosting(login, password, filePath)
+
+    core.info(`files in current dir ${fs.readdirSync('.').join(', ')}`)
+
+    core.info(`Your login ${login} and password ${password}`)
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Waiting ${ms} milliseconds ...`)
